@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Date: 2023/4/6 16:24
+Date: 2024/10/19 21:30
 Desc: 乐咕乐股-A 股市盈率和市净率
 https://legulegu.com/stockdata/shanghaiPE
 """
+
 from datetime import datetime
 
 import pandas as pd
+import py_mini_racer
 import requests
-from py_mini_racer import py_mini_racer
 
 from akshare.stock_feature.stock_a_indicator import get_cookie_csrf
 
@@ -367,7 +368,11 @@ def stock_market_pe_lg(symbol: str = "深证") -> pd.DataFrame:
     else:
         url = "https://legulegu.com/api/stockdata/get-ke-chuang-ban-pe"
         params = {"token": token}
-        r = requests.get(url, params=params, **get_cookie_csrf(url="https://legulegu.com/stockdata/ke-chuang-ban-pe"))
+        r = requests.get(
+            url,
+            params=params,
+            **get_cookie_csrf(url="https://legulegu.com/stockdata/ke-chuang-ban-pe"),
+        )
         data_json = r.json()
         temp_df = pd.DataFrame(data_json["data"])
         temp_df["date"] = (
@@ -415,7 +420,11 @@ def stock_index_pe_lg(symbol: str = "沪深300") -> pd.DataFrame:
     }
     url = "https://legulegu.com/api/stockdata/index-basic-pe"
     params = {"token": token, "indexCode": symbol_map[symbol]}
-    r = requests.get(url, params=params, **get_cookie_csrf(url="https://legulegu.com/stockdata/sz50-ttm-lyr"))
+    r = requests.get(
+        url,
+        params=params,
+        **get_cookie_csrf(url="https://legulegu.com/stockdata/sz50-ttm-lyr"),
+    )
     data_json = r.json()
     temp_df = pd.DataFrame(data_json["data"])
     temp_df["date"] = (
@@ -518,7 +527,11 @@ def stock_index_pb_lg(symbol: str = "上证50") -> pd.DataFrame:
     }
     url = "https://legulegu.com/api/stockdata/index-basic-pb"
     params = {"token": token, "indexCode": symbol_map[symbol]}
-    r = requests.get(url, params=params, **get_cookie_csrf(url="https://legulegu.com/stockdata/zz500-ttm-lyr"))
+    r = requests.get(
+        url,
+        params=params,
+        **get_cookie_csrf(url="https://legulegu.com/stockdata/zz500-ttm-lyr"),
+    )
     data_json = r.json()
     temp_df = pd.DataFrame(data_json["data"])
     temp_df["date"] = (
@@ -546,9 +559,18 @@ def stock_index_pb_lg(symbol: str = "上证50") -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    stock_market_pe_lg_df = stock_market_pe_lg(symbol="上证")
+    print(stock_market_pe_lg_df)
+
+    stock_market_pe_lg_df = stock_market_pe_lg(symbol="科创版")
+    print(stock_market_pe_lg_df)
+
     for item in {"上证", "深证", "创业板", "科创版"}:
         stock_market_pe_lg_df = stock_market_pe_lg(symbol=item)
         print(stock_market_pe_lg_df)
+
+    stock_index_pe_lg_df = stock_index_pe_lg(symbol="上证50")
+    print(stock_index_pe_lg_df)
 
     for item in [
         "上证50",
@@ -585,6 +607,5 @@ if __name__ == "__main__":
         "中证100",
         "中证800",
     ]:
-        print(item)
         stock_index_pe_lg_df = stock_index_pb_lg(symbol=item)
         print(stock_index_pe_lg_df)

@@ -1,10 +1,13 @@
 # -*- coding:utf-8 -*-
 # !/usr/bin/env python
 """
-Date: 2022/12/28 17:20
+Date: 2023/11/9 14:00
 Desc: 中证商品指数
 http://www.ccidx.com/
 """
+
+from io import BytesIO
+
 import pandas as pd
 import requests
 
@@ -25,8 +28,7 @@ def futures_index_ccidx(symbol: str = "中证商品期货指数") -> pd.DataFram
     url = "http://www.ccidx.com/front/ajax_downZSHQ.do"
     params = {"indexCode": futures_index_map[symbol]}
     r = requests.get(url, params=params)
-    temp_df = pd.read_excel(r.content, header=1)
-
+    temp_df = pd.read_excel(BytesIO(r.content), header=1, engine="openpyxl")
     temp_df.columns = [
         "日期",
         "指数代码",
@@ -42,7 +44,7 @@ def futures_index_ccidx(symbol: str = "中证商品期货指数") -> pd.DataFram
         "涨跌",
         "涨跌幅",
     ]
-    temp_df["日期"] = pd.to_datetime(temp_df["日期"]).dt.date
+    temp_df["日期"] = pd.to_datetime(temp_df["日期"], errors="coerce").dt.date
     temp_df["开盘"] = pd.to_numeric(temp_df["开盘"], errors="coerce")
     temp_df["最高"] = pd.to_numeric(temp_df["最高"], errors="coerce")
     temp_df["最低"] = pd.to_numeric(temp_df["最低"], errors="coerce")
@@ -50,7 +52,7 @@ def futures_index_ccidx(symbol: str = "中证商品期货指数") -> pd.DataFram
     temp_df["结算"] = pd.to_numeric(temp_df["结算"], errors="coerce")
     temp_df["涨跌"] = pd.to_numeric(temp_df["涨跌"], errors="coerce")
     temp_df["涨跌幅"] = pd.to_numeric(temp_df["涨跌幅"], errors="coerce")
-    temp_df.sort_values(['日期'], inplace=True)
+    temp_df.sort_values(by=["日期"], inplace=True)
     temp_df.reset_index(inplace=True, drop=True)
     return temp_df
 
@@ -59,7 +61,8 @@ def futures_index_min_ccidx(symbol: str = "中证监控油脂油料期货指数"
     """
     中证商品指数-商品指数-分时数据
     http://www.ccidx.com/index.html
-    :param symbol: choice of {"中证商品期货指数", "中证商品期货价格指数", "中证监控油脂油料期货指数", "中证监控软商品期货指数",  "中证监控能化期货指数", "中证监控钢铁期货指数"}
+    :param symbol: choice of {"中证商品期货指数", "中证商品期货价格指数", "中证监控油脂油料期货指数", "中证监控软商品期货指数",
+    "中证监控能化期货指数", "中证监控钢铁期货指数"}
     :type symbol: str
     :return: 商品指数-分时数据
     :rtype: pandas.DataFrame
@@ -92,7 +95,8 @@ def futures_index_min_ccidx(symbol: str = "中证监控油脂油料期货指数"
         "Pragma": "no-cache",
         "Proxy-Connection": "keep-alive",
         "Referer": "http://www.ccidx.com/cscidx/quote1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/92.0.4515.159 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
     }
     r = requests.post(url, params=params, data=payload, headers=headers)
@@ -104,7 +108,7 @@ def futures_index_min_ccidx(symbol: str = "中证监控油脂油料期货指数"
         "datetime",
         "value",
     ]
-    temp_df["value"] = pd.to_numeric(temp_df["value"])
+    temp_df["value"] = pd.to_numeric(temp_df["value"], errors="coerce")
     return temp_df
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Date: 2023/5/11 17:30
+Date: 2024/12/12 17:00
 Desc: 生意社网站采集大宗商品现货价格及相应基差数据, 数据时间段从 20110104-至今
 备注：现期差 = 现货价格 - 期货价格(这里的期货价格为结算价)
 黄金为 元/克, 白银为 元/千克, 玻璃现货为 元/平方米, 鸡蛋现货为 元/公斤, 鸡蛋期货为 元/500千克, 其余为 元/吨.
@@ -12,6 +12,7 @@ Desc: 生意社网站采集大宗商品现货价格及相应基差数据, 数据
 发现生意社的 bugs:
 1. 2018-09-12 周三 数据缺失是因为生意社源数据在该交易日缺失: https://www.100ppi.com/sf/day-2018-09-12.html
 """
+
 import datetime
 import re
 import time
@@ -74,7 +75,9 @@ def futures_spot_price_daily(
         return temp_df
 
 
-def futures_spot_price(date: str = "20230509", vars_list: list = cons.contract_symbols) -> pd.DataFrame:
+def futures_spot_price(
+    date: str = "20240430", vars_list: list = cons.contract_symbols
+) -> pd.DataFrame:
     """
     指定交易日大宗商品现货价格及相应基差
     https://www.100ppi.com/sf/day-2017-09-12.html
@@ -96,12 +99,14 @@ def futures_spot_price(date: str = "20230509", vars_list: list = cons.contract_s
     """
     date = cons.convert_date(date) if date is not None else datetime.date.today()
     if date < datetime.date(2011, 1, 4):
-        raise Exception("数据源开始日期为 20110104, 请将获取数据时间点设置在 20110104 后")
+        raise Exception(
+            "数据源开始日期为 20110104, 请将获取数据时间点设置在 20110104 后"
+        )
     if date.strftime("%Y%m%d") not in calendar:
         warnings.warn(f"{date.strftime('%Y%m%d')}非交易日")
         return pd.DataFrame()
-    u1 = "http://www.100ppi.com/sf/"
-    u2 = f'http://www.100ppi.com/sf/day-{date.strftime("%Y-%m-%d")}.html'
+    u1 = "https://www.100ppi.com/sf/"
+    u2 = f'https://www.100ppi.com/sf/day-{date.strftime("%Y-%m-%d")}.html'
     i = 1
     while True:
         for url in [u2, u1]:
@@ -119,12 +124,16 @@ def futures_spot_price(date: str = "20230509", vars_list: list = cons.contract_s
                     return temp_df
                 else:
                     time.sleep(3)
-            except:
-                print(f"{date.strftime('%Y-%m-%d')}日生意社数据连接失败，第{str(i)}次尝试，最多5次")
+            except Exception as e:  # noqa: E722
+                print(
+                    f"{date.strftime('%Y-%m-%d')}日生意社数据连接失败[错误信息:{e}]，第{str(i)}次尝试，最多5次"
+                )
                 i += 1
                 if i > 5:
                     print(
-                        f"{date.strftime('%Y-%m-%d')}日生意社数据连接失败, 如果当前交易日是 2018-09-12, 由于生意社源数据缺失, 无法访问, 否则为重复访问已超过5次，您的地址被网站墙了，请保存好返回数据，稍后从该日期起重试"
+                        f"{date.strftime('%Y-%m-%d')}日生意社数据连接失败, 如果当前交易日是 2018-09-12, "
+                        f"由于生意社源数据缺失, 无法访问, 否则为重复访问已超过5次，您的地址被网站墙了，"
+                        f"请保存好返回数据，稍后从该日期起重试"
                     )
                     return pd.DataFrame()
 
@@ -160,11 +169,27 @@ def _check_information(df_data, date):
     ]
     records = pd.DataFrame()
     for string in df_data["symbol"].tolist():
+        news = "".join(re.findall(r"[\u4e00-\u9fa5]", string))
+        if news == "":
+            news = string.strip()
+
+        """
         if string == "PTA":
             news = "PTA"
         else:
             news = "".join(re.findall(r"[\u4e00-\u9fa5]", string))
-        if news != "" and news not in ["商品", "价格", "上海期货交易所", "郑州商品交易所", "大连商品交易所", "广州期货交易所"]:
+        """
+
+        if news != "" and news not in [
+            "商品",
+            "价格",
+            "上海期货交易所",
+            "郑州商品交易所",
+            "大连商品交易所",
+            "广州期货交易所",
+            # 某些天网站没有数据，比如 20180912，此时返回"暂无数据"，但并不是网站被墙了
+            "暂无数据",
+        ]:
             symbol = chinese_to_english(news)
             record = pd.DataFrame(df_data[df_data["symbol"] == string])
             record.loc[:, "symbol"] = symbol
@@ -177,14 +202,26 @@ def _check_information(df_data, date):
                 symbol == "FG"
             ):  # 上表中现货单位为元/平方米, 期货单位为元/吨. 换算公式：元/平方米*80=元/吨(http://www.100ppi.com/sf/959.html)
                 record.loc[:, "spot_price"] = float(record["spot_price"].iloc[0]) * 80
+            elif (
+                symbol == "LH"
+            ):  # 上表中现货单位为元/公斤, 期货单位为元/吨. 换算公式：元/公斤*1000=元/吨(http://www.100ppi.com/sf/959.html)
+                record.loc[:, "spot_price"] = float(record["spot_price"].iloc[0]) * 1000
             records = pd.concat([records, record])
 
-    records.loc[
-        :, ["near_contract_price", "dominant_contract_price", "spot_price"]
-    ] = records.loc[
-        :, ["near_contract_price", "dominant_contract_price", "spot_price"]
-    ].astype(
-        "float"
+    # 20241129:如果某日没有数据，直接返回返回空表
+    if records.empty:
+        records = df_data.iloc[0:0]
+        records["near_basis"] = pd.Series(dtype="float")
+        records["dom_basis"] = pd.Series(dtype="float")
+        records["near_basis_rate"] = pd.Series(dtype="float")
+        records["dom_basis_rate"] = pd.Series(dtype="float")
+        records["date"] = pd.Series(dtype="object")
+        return records
+
+    records.loc[:, ["near_contract_price", "dominant_contract_price", "spot_price"]] = (
+        records.loc[
+            :, ["near_contract_price", "dominant_contract_price", "spot_price"]
+        ].astype("float")
     )
 
     records.loc[:, "near_contract"] = records["near_contract"].replace(
@@ -194,9 +231,11 @@ def _check_information(df_data, date):
         r"[^0-9]*(\d*)$", r"\g<1>", regex=True
     )
 
+    records.loc[:, "near_month"] = records.loc[:, "near_contract"]
     records.loc[:, "near_contract"] = records["symbol"] + records.loc[
         :, "near_contract"
     ].astype("int").astype("str")
+    records.loc[:, "dominant_month"] = records.loc[:, "dominant_contract"]
     records.loc[:, "dominant_contract"] = records["symbol"] + records.loc[
         :, "dominant_contract"
     ].astype("int").astype("str")
@@ -232,7 +271,8 @@ def _check_information(df_data, date):
     records["dom_basis_rate"] = (
         records["dominant_contract_price"] / records["spot_price"] - 1
     )
-    records.loc[:, "date"] = date.strftime("%Y%m%d")
+    # records.loc[:, "date"] = date.strftime("%Y%m%d")
+    records.insert(0, "date", date.strftime("%Y%m%d"))
     return records
 
 
@@ -240,17 +280,17 @@ def _join_head(content: pd.DataFrame) -> List:
     headers = []
     for s1, s2 in zip(content.iloc[0], content.iloc[1]):
         if s1 != s2:
-            s = f'{s1}{s2}'
+            s = f"{s1}{s2}"
         else:
             s = s1
         headers.append(s)
     return headers
 
 
-def futures_spot_price_previous(date: str = "20220209") -> pd.DataFrame:
+def futures_spot_price_previous(date: str = "20240430") -> pd.DataFrame:
     """
     具体交易日大宗商品现货价格及相应基差
-    http://www.100ppi.com/sf/day-2017-09-12.html
+    https://www.100ppi.com/sf/day-2017-09-12.html
     :param date: 交易日; 历史日期
     :type date: str
     :return: 现货价格及相应基差
@@ -258,24 +298,49 @@ def futures_spot_price_previous(date: str = "20220209") -> pd.DataFrame:
     """
     date = cons.convert_date(date) if date is not None else datetime.date.today()
     if date < datetime.date(2011, 1, 4):
-        raise Exception("数据源开始日期为 20110104, 请将获取数据时间点设置在 20110104 后")
+        raise Exception(
+            "数据源开始日期为 20110104, 请将获取数据时间点设置在 20110104 后"
+        )
     if date.strftime("%Y%m%d") not in calendar:
         warnings.warn(f"{date.strftime('%Y%m%d')}非交易日")
-        return
-    url = date.strftime('http://www.100ppi.com/sf2/day-%Y-%m-%d.html')
+        return pd.DataFrame()
+    url = date.strftime("https://www.100ppi.com/sf2/day-%Y-%m-%d.html")
     content = pandas_read_html_link(url)
     main = content[1]
     # Header
     header = _join_head(main)
     # Values
-    values = main[main[4].str.endswith('%')]
+    values = main[main[4].str.endswith("%")]
     values.columns = header
     # Basis
-    basis = pd.concat(content[2:-1])
-    basis.columns = ['主力合约基差', '主力合约基差(%)']
-    basis['商品'] = values['商品'].tolist()
-    basis = pd.merge(values[["商品", "现货价格", "主力合约代码", "主力合约价格"]], basis)
-    basis = pd.merge(basis, values[["商品", "180日内主力基差最高", "180日内主力基差最低", "180日内主力基差平均"]])
+    # 对于没有数据的天，xml文件中没有数据，所以content[2:-1]可能为空
+    if len(content[2:-1]) > 0:
+        basis = pd.concat(content[2:-1])
+    else:
+        basis = pd.DataFrame(columns=["主力合约基差", "主力合约基差(%)"])
+
+    basis.columns = ["主力合约基差", "主力合约基差(%)"]
+    # 20241125(jasonudu)：因为部分日期，存在多个品种的现货价格，比如20151125的白糖、豆粕、豆油等，如果用商品名来merge，会出现重复列名，所以改用index来merge
+    # basis["商品"] = values["商品"].tolist()
+    basis.index = values.index
+    basis = pd.merge(
+        values[["商品", "现货价格", "主力合约代码", "主力合约价格"]],
+        basis,
+        left_index=True,
+        right_index=True,
+    )
+    basis = pd.merge(
+        basis,
+        values[
+            [
+                "180日内主力基差最高",
+                "180日内主力基差最低",
+                "180日内主力基差平均",
+            ]
+        ],
+        left_index=True,
+        right_index=True,
+    )
     basis.columns = [
         "商品",
         "现货价格",
@@ -287,18 +352,18 @@ def futures_spot_price_previous(date: str = "20220209") -> pd.DataFrame:
         "180日内主力基差最低",
         "180日内主力基差平均",
     ]
-    basis['主力合约变动百分比'] = basis['主力合约变动百分比'].str.strip("%")
+    basis["主力合约变动百分比"] = basis["主力合约变动百分比"].str.strip("%")
     return basis
 
 
 if __name__ == "__main__":
     futures_spot_price_daily_df = futures_spot_price_daily(
-        start_day="20230919", end_day="20230927", vars_list=['SR']
+        start_day="20240415", end_day="20240418", vars_list=["CU", "RB"]
     )
     print(futures_spot_price_daily_df)
 
-    futures_spot_price_df = futures_spot_price(date="20230919")
+    futures_spot_price_df = futures_spot_price(date="20240430")
     print(futures_spot_price_df)
 
-    futures_spot_price_previous_df = futures_spot_price_previous(date='20230807')
+    futures_spot_price_previous_df = futures_spot_price_previous(date="20240430")
     print(futures_spot_price_previous_df)

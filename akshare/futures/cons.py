@@ -4,6 +4,7 @@
 Date: 2023/1/12 16:58
 Desc: 期货配置文件
 """
+
 import datetime
 import json
 import os
@@ -63,30 +64,6 @@ inventory_temp_headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
 }
 
-sample_headers = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
-    "Host": "service.99qh.com",
-    "Origin": "http://service.99qh.com",
-    "Referer": "http://www.99qh.com/d/store.aspx",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
-}
-
-qh_headers = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-    "Accept-Encoding": "gzip, deflate",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-    "Content-Length": "8429",
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Host": "service.99qh.com",
-    "Origin": "http://service.99qh.com",
-    "Pragma": "no-cache",
-    "Cookie": "__utma=181566328.985082941.1656754961.1656754961.1656754961.1; __utmc=181566328; __utmz=181566328.1656754961.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); ASP.NET_SessionId=42k0mpzfu3fv5cxqmtrwc20y; tgw_l7_route=b26adbec28f4b4e1f7290033d59c43a7; __utmt=1; __utmb=181566328.2.10.1656754961",
-    "Referer": "http://service.99qh.com/Storage/Storage.aspx?page=99qh",
-    "Upgrade-Insecure-Requests": "1",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36",
-}
 # 奇货可查
 QHKC_INDEX_URL = "https://www.qhkch.com/ajax/index_show.php"
 QHKC_INDEX_TREND_URL = "https://qhkch.com/ajax/indexes_trend.php"
@@ -98,8 +75,6 @@ QHKC_FUND_DEAL_URL = "https://qhkch.com/ajax/fund_deal_pie.php"
 QHKC_FUND_BIG_CHANGE_URL = "https://qhkch.com/ajax/fund_big_chge.php"
 QHKC_TOOL_FOREIGN_URL = "https://qhkch.com/ajax/toolbox_foreign.php"
 QHKC_TOOL_GDP_URL = "https://qhkch.com/dist/views/toolbox/gdp.html?v=1.10.7.1"
-
-BOND_BANK_URL = "http://zhuce.nafmii.org.cn/fans/publicQuery/releFileProjDataGrid"
 
 # 键值对: 键为交易所代码, 值为具体合约代码
 market_exchange_symbols = {
@@ -126,6 +101,7 @@ market_exchange_symbols = {
         "EB",  # 20191009
         "PG",
         "LH",  # 20210108 生猪期货
+        "LG",  # 20241118 原木期货
     ],
     "czce": [
         "WH",
@@ -160,6 +136,9 @@ market_exchange_symbols = {
         "CJ",  # 红枣期货
         "SA",  # 纯碱期货
         "PK",  # 20210201 花生期货
+        "PF",  # 短纤
+        "PX",  # 纯苯
+        "SH",  # 烧碱
     ],
     "shfe": [
         "CU",
@@ -184,27 +163,13 @@ market_exchange_symbols = {
         "BC",
         "AO",
         "BR",
+        "EC",  # 集运指数
     ],
     "gfex": ["SI", "LC"],
 }
 
 contract_symbols = []
 [contract_symbols.extend(i) for i in market_exchange_symbols.values()]
-
-bond_bank_headers = {
-    "Accept": "application/json, text/javascript, */*; q=0.01",
-    "Accept-Encoding": "gzip, deflate",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Connection": "keep-alive",
-    "Content-Length": "95",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "Cookie": "Hm_lvt_508be7db52fd6da009f33b1d6a262bd3=1568385898; Hm_lpvt_508be7db52fd6da009f33b1d6a262bd3=1568385898; JSESSIONID=cEArLxkgwPfryBR_dAOfQEXfKx2MfDwFT-bNVl24FCALRSsMUm1C!-1036170306",
-    "Host": "zhuce.nafmii.org.cn",
-    "Origin": "http://zhuce.nafmii.org.cn",
-    "Referer": "http://zhuce.nafmii.org.cn/fans/publicQuery/manager",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
-    "X-Requested-With": "XMLHttpRequest",
-}
 
 headers = {
     "Host": "www.czce.com.cn",
@@ -239,7 +204,7 @@ dce_headers = {
 SYS_SPOT_PRICE_URL = "http://www.100ppi.com/sf/day-{}.html"
 SYS_SPOT_PRICE_LATEST_URL = "http://www.100ppi.com/sf/"
 
-SHFE_VOL_RANK_URL = "http://www.shfe.com.cn/data/dailydata/kx/pm%s.dat"
+SHFE_VOL_RANK_URL = "https://tsite.shfe.com.cn/data/dailydata/kx/pm%s.dat"
 CFFEX_VOL_RANK_URL = "http://www.cffex.com.cn/sj/ccpm/%s/%s/%s_1.csv"
 DCE_VOL_RANK_URL_1 = "http://www.dce.com.cn/publicweb/quotesdata/exportMemberDealPosiQuotesData.html?memberDealPosiQuotes.variety=%s&memberDealPosiQuotes.trade_type=0&contract.contract_id=%s&contract.variety_id=%s&year=%s&month=%s&day=%s&exportFlag=txt"
 DCE_VOL_RANK_URL_2 = "http://www.dce.com.cn/publicweb/quotesdata/memberDealPosiQuotes.html?memberDealPosiQuotes.variety=%s&memberDealPosiQuotes.trade_type=0&contract.contract_id=all&contract.variety_id=%s&year=%s&month=%s&day=%s"
@@ -251,8 +216,8 @@ CZCE_VOL_RANK_URL_3 = (
 
 DCE_RECEIPT_URL = "http://www.dce.com.cn/publicweb/quotesdata/wbillWeeklyQuotes.html"
 
-SHFE_RECEIPT_URL_1 = "http://www.shfe.com.cn/data/dailydata/%sdailystock.html"
-SHFE_RECEIPT_URL_2 = "http://www.shfe.com.cn/data/dailydata/%sdailystock.dat"
+SHFE_RECEIPT_URL_1 = "http://tsite.shfe.com.cn/data/dailydata/%sdailystock.html"
+SHFE_RECEIPT_URL_2 = "http://tsite.shfe.com.cn/data/dailydata/%sdailystock.dat"
 CZCE_RECEIPT_URL_1 = "http://www.czce.com.cn/cn/exchange/jyxx/sheet/sheet%s.html"
 CZCE_RECEIPT_URL_2 = "http://www.czce.com.cn/cn/exchange/%s/datawhsheet/%s.htm"
 CZCE_RECEIPT_URL_3 = (
@@ -260,8 +225,8 @@ CZCE_RECEIPT_URL_3 = (
 )
 
 CFFEX_DAILY_URL = "http://www.cffex.com.cn/fzjy/mrhq/{}/{}/{}_1.csv"
-SHFE_DAILY_URL = "http://www.shfe.com.cn/data/dailydata/kx/kx%s.dat"
-SHFE_V_WAP_URL = "http://www.shfe.com.cn/data/dailydata/ck/%sdailyTimePrice.dat"
+SHFE_DAILY_URL = "http://tsite.shfe.com.cn/data/dailydata/kx/kx%s.dat"
+SHFE_V_WAP_URL = "http://tsite.shfe.com.cn/data/dailydata/ck/%sdailyTimePrice.dat"
 DCE_DAILY_URL = "http://www.dce.com.cn//publicweb/quotesdata/dayQuotesCh.html"
 CZCE_DAILY_URL_1 = "http://www.czce.com.cn/cn/exchange/jyxx/hq/hq%s.html"
 CZCE_DAILY_URL_2 = "http://www.czce.com.cn/cn/exchange/%s/datadaily/%s.txt"
@@ -423,6 +388,7 @@ DCE_MAP = {
     "苯乙烯": "EB",
     "液化石油气": "PG",
     "生猪": "LH",
+    "原木": "LG",
 }
 
 
@@ -489,7 +455,7 @@ def get_calendar():
     """
     setting_file_name = "calendar.json"
     setting_file_path = get_json_path(setting_file_name, __file__)
-    with open(setting_file_path, "r") as f:
+    with open(setting_file_path, "r", encoding="utf-8") as f:
         data_json = json.load(f)
     return data_json
 
